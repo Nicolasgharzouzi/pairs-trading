@@ -12,7 +12,7 @@ PAIRS = [
 
 WINDOW  = 30
 ENTRY_Z = 2.0
-EXIT_Z  = 0.5
+EXIT_Z  = 0.0
 
 
 def compute_spread(s1, s2):
@@ -95,7 +95,6 @@ def plot_pair(prices, pair):
 
 
 if __name__ == "__main__":
-    # Download data ONCE and reuse for all pairs
     prices = download_prices()
 
     for pair in PAIRS:

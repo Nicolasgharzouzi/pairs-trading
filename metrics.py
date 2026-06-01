@@ -77,7 +77,7 @@ def compute_all_metrics(results, pair_name):
 
 
 if __name__ == "__main__":
-    pairs       = ['MS_WFC', 'KO_PEP']
+    pairs = ['BAC_PNC', 'GS_MS']
     all_metrics = []
 
     for pair in pairs:
