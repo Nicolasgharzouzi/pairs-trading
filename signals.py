@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.regression.linear_model import OLS
 from statsmodels.tools import add_constant
+from config import DEFAULT_ENTRY_Z, DEFAULT_EXIT_Z, ZSCORE_WINDOW
 from data import download_prices
 
 PAIRS = [
@@ -10,9 +11,9 @@ PAIRS = [
     ('GS',  'MS'),
 ]
 
-WINDOW  = 30
-ENTRY_Z = 2.0
-EXIT_Z  = 0.0
+WINDOW  = ZSCORE_WINDOW
+ENTRY_Z = DEFAULT_ENTRY_Z
+EXIT_Z  = DEFAULT_EXIT_Z
 
 
 def compute_spread(s1, s2):

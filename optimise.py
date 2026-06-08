@@ -1,38 +1,22 @@
 import pandas as pd
-import numpy as np
+
+from config import (
+    CAPITAL,
+    ENTRY_THRESHOLDS,
+    EXIT_THRESHOLDS,
+    PAIRS,
+)
 from data import download_prices
-from signals import compute_spread, compute_zscore, generate_signals
+from engine import run_backtest
 from metrics import sharpe_ratio
-
-PAIRS = [
-    ('BAC', 'PNC'),
-    ('GS',  'MS'),
-]
-
-CAPITAL = 10_000
-TOTAL_COST = 0.0015
-
-ENTRY_THRESHOLDS = [1.0, 1.5, 2.0, 2.5, 3.0]
-EXIT_THRESHOLDS  = [0.0, 0.25, 0.5, 0.75, 1.0]
 
 
 def backtest_with_params(prices, pair, entry_z, exit_z):
     s1_name, s2_name = pair
     s1, s2 = prices[s1_name], prices[s2_name]
 
-    spread, hedge_ratio = compute_spread(s1, s2)
-    zscore             = compute_zscore(spread)
-    signal             = generate_signals(zscore, entry_z=entry_z, exit_z=exit_z)
-
-    r1 = s1.pct_change()
-    r2 = s2.pct_change()
-
-    strategy_returns = signal.shift(1) * (r1 - hedge_ratio * r2)
-    trade_entries    = signal.diff().abs() > 0
-    strategy_returns[trade_entries] -= TOTAL_COST
-
-    daily_returns = strategy_returns.dropna()
-    return sharpe_ratio(daily_returns)
+    result = run_backtest(s1, s2, entry_z, exit_z)
+    return sharpe_ratio(result.strategy_returns.dropna())
 
 
 def optimise_pair(prices, pair):
@@ -47,7 +31,7 @@ def optimise_pair(prices, pair):
             results.append({
                 'entry_z': entry_z,
                 'exit_z':  exit_z,
-                'sharpe':  round(sharpe, 3)
+                'sharpe':  round(sharpe, 3),
             })
 
     df = pd.DataFrame(results).sort_values('sharpe', ascending=False)
@@ -62,4 +46,4 @@ if __name__ == "__main__":
     prices = download_prices()
 
     for pair in PAIRS:
-        optimise_pair(prices, pair)
+        optimise_pair(prices, (pair[0], pair[1]))

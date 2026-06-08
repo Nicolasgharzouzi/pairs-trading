@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+from config import CAPITAL
+
 TRADING_DAYS = 252
 
 
@@ -58,7 +60,7 @@ def profit_factor(daily_pnl):
 
 
 def compute_all_metrics(results, pair_name):
-    daily_returns  = results['daily_pnl'] / 10_000
+    daily_returns  = results['daily_pnl'] / CAPITAL
     cumulative_pnl = results['cumulative_pnl']
     daily_pnl      = results['daily_pnl']
 
