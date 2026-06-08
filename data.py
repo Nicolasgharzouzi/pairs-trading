@@ -8,8 +8,7 @@ from itertools import combinations
 import warnings
 warnings.filterwarnings('ignore')
 
-START = "2019-01-01"
-END   = "2023-12-31"
+from config import END, START
 
 # Handpicked liquid S&P 500 stocks by sector - 80 stocks
 # More stocks = more pairs = better chance of finding strong relationships
