@@ -1,42 +1,89 @@
 import pandas as pd
-
-from config import CAPITAL, PAIRS, TEST_DAYS, TRAIN_DAYS
+import numpy as np
 from data import download_prices
-from engine import fit_hedge_ratio, run_backtest
-from metrics import max_drawdown, sharpe_ratio, win_rate
+from signals import compute_spread, compute_zscore, generate_signals
+from metrics import sharpe_ratio, max_drawdown, win_rate
+
+PAIRS = [
+    ('BAC', 'PNC'),
+    ('GS',  'MS'),
+]
+
+CAPITAL    = 10_000
+TOTAL_COST = 0.0015
+
+TRAIN_DAYS = 504   # 2 years
+TEST_DAYS  = 126   # 6 months
+
+ENTRY_THRESHOLDS = [1.0, 1.5, 2.0, 2.5, 3.0]
+EXIT_THRESHOLDS  = [0.0, 0.25, 0.5, 0.75, 1.0]
 
 
-def backtest_window(prices, pair, train_start, train_end, test_start, test_end):
+def fit_hedge_ratio(s1, s2):
+    from statsmodels.regression.linear_model import OLS
+    from statsmodels.tools import add_constant
+    model = OLS(s1, add_constant(s2)).fit()
+    return model.params.iloc[1]
+
+
+def run_window(s1, s2, hedge_ratio, entry_z, exit_z):
+    """Run backtest on a price window with given parameters."""
+    spread  = s1 - hedge_ratio * s2
+    zscore  = compute_zscore(spread)
+    signal  = generate_signals(zscore, entry_z=entry_z, exit_z=exit_z)
+
+    r1 = s1.pct_change()
+    r2 = s2.pct_change()
+
+    strategy_returns = signal.shift(1) * (r1 - hedge_ratio * r2)
+    trade_entries    = signal.diff().abs() > 0
+    strategy_returns[trade_entries] -= TOTAL_COST
+
+    daily_pnl = strategy_returns.dropna() * CAPITAL
+    return daily_pnl
+
+
+def optimise_on_train(s1_train, s2_train, hedge_ratio):
     """
-    Train on one window, test on the next.
-    The model never sees the test data during training.
+    Find best entry/exit thresholds using only training data.
+    This is the key fix — thresholds are chosen before seeing test data.
     """
-    s1_name, s2_name, entry_z, exit_z = pair
-    s1, s2 = prices[s1_name], prices[s2_name]
+    best_sharpe = -np.inf
+    best_entry  = 2.0
+    best_exit   = 0.0
 
-    s1_train = s1[train_start:train_end]
-    s2_train = s2[train_start:train_end]
-    hedge_ratio = fit_hedge_ratio(s1_train, s2_train)
+    for entry_z in ENTRY_THRESHOLDS:
+        for exit_z in EXIT_THRESHOLDS:
+            if exit_z >= entry_z:
+                continue
 
-    s1_test = s1[test_start:test_end]
-    s2_test = s2[test_start:test_end]
+            daily_pnl = run_window(s1_train, s2_train, hedge_ratio, entry_z, exit_z)
 
-    result = run_backtest(
-        s1_test, s2_test, entry_z, exit_z, hedge_ratio=hedge_ratio
-    )
-    return result.daily_pnl.dropna(), result.cumulative_pnl.dropna()
+            if len(daily_pnl) == 0:
+                continue
+
+            sharpe = sharpe_ratio(daily_pnl / CAPITAL)
+
+            if sharpe > best_sharpe:
+                best_sharpe = sharpe
+                best_entry  = entry_z
+                best_exit   = exit_z
+
+    return best_entry, best_exit
 
 
 def walk_forward(prices, pair):
-    s1_name, s2_name, entry_z, exit_z = pair
+    s1_name, s2_name = pair
     print(f"\n=== Walk-Forward: {s1_name}/{s2_name} ===")
 
-    all_dates  = prices.index
-    n          = len(all_dates)
-    windows    = []
-    all_pnl    = []
+    s1       = prices[s1_name]
+    s2       = prices[s2_name]
+    all_dates = prices.index
+    n         = len(all_dates)
 
-    start = 0
+    windows  = []
+    all_pnl  = []
+    start    = 0
     window_num = 1
 
     while start + TRAIN_DAYS + TEST_DAYS <= n:
@@ -45,34 +92,50 @@ def walk_forward(prices, pair):
         test_start  = all_dates[start + TRAIN_DAYS]
         test_end    = all_dates[min(start + TRAIN_DAYS + TEST_DAYS - 1, n - 1)]
 
-        daily_pnl, cumulative_pnl = backtest_window(
-            prices, pair, train_start, train_end, test_start, test_end
-        )
+        # Training data only
+        s1_train = s1[train_start:train_end]
+        s2_train = s2[train_start:train_end]
+
+        # Step 1: fit hedge ratio on training data
+        hedge_ratio = fit_hedge_ratio(s1_train, s2_train)
+
+        # Step 2: optimise thresholds on training data
+        best_entry, best_exit = optimise_on_train(s1_train, s2_train, hedge_ratio)
+
+        # Step 3: apply to test data — never seen before
+        s1_test = s1[test_start:test_end]
+        s2_test = s2[test_start:test_end]
+
+        daily_pnl = run_window(s1_test, s2_test, hedge_ratio, best_entry, best_exit)
 
         period_sharpe = sharpe_ratio(daily_pnl / CAPITAL)
-        period_pnl    = cumulative_pnl.iloc[-1] if len(cumulative_pnl) > 0 else 0
+        period_pnl    = daily_pnl.cumsum().iloc[-1] if len(daily_pnl) > 0 else 0
 
-        print(f"  Window {window_num}: train {train_start.date()} to {train_end.date()} "
-              f"| test {test_start.date()} to {test_end.date()} "
-              f"| P&L: ${period_pnl:,.0f} | Sharpe: {period_sharpe:.3f}")
+        print(f"  Window {window_num}: "
+              f"test {test_start.date()} to {test_end.date()} | "
+              f"entry=±{best_entry} exit=±{best_exit} | "
+              f"P&L: ${period_pnl:,.0f} | Sharpe: {period_sharpe:.3f}")
 
         windows.append({
-            'window':      window_num,
-            'test_start':  test_start,
-            'test_end':    test_end,
-            'pnl':         period_pnl,
-            'sharpe':      period_sharpe,
+            'window':     window_num,
+            'test_start': test_start,
+            'test_end':   test_end,
+            'entry_z':    best_entry,
+            'exit_z':     best_exit,
+            'pnl':        period_pnl,
+            'sharpe':     period_sharpe,
         })
 
         all_pnl.append(daily_pnl)
         start      += TEST_DAYS
         window_num += 1
 
-    combined_pnl    = pd.concat(all_pnl)
-    total_pnl       = combined_pnl.cumsum().iloc[-1]
-    overall_sharpe  = sharpe_ratio(combined_pnl / CAPITAL)
-    overall_wr      = win_rate(combined_pnl)
-    overall_dd      = max_drawdown(combined_pnl.cumsum())
+    # Combine all out-of-sample windows
+    combined_pnl   = pd.concat(all_pnl)
+    total_pnl      = combined_pnl.cumsum().iloc[-1]
+    overall_sharpe = sharpe_ratio(combined_pnl / CAPITAL)
+    overall_wr     = win_rate(combined_pnl)
+    overall_dd     = max_drawdown(combined_pnl.cumsum())
 
     print(f"\n  Overall out-of-sample results:")
     print(f"  Total P&L    : ${total_pnl:,.2f}")
