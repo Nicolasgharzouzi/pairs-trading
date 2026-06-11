@@ -11,10 +11,12 @@ ZSCORE_WINDOW = 30
 DEFAULT_ENTRY_Z = 2.0
 DEFAULT_EXIT_Z  = 0.0
 
-# Pairs with optimised entry/exit z-scores
+# Pairs with entry/exit z-scores (stock_1, stock_2, entry_z, exit_z)
 PAIRS = [
     ('BAC', 'PNC', 2.0, 0.0),
+    ('VLO', 'XOM', 3.0, 1.0),
     ('GS',  'MS',  2.5, 0.0),
+    ('MOH', 'UNH', 1.5, 0.5),
 ]
 
 # Optimisation grid

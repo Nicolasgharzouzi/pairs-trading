@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from config import CAPITAL
+from config import CAPITAL, PAIRS
 
 TRADING_DAYS = 252
 
@@ -79,12 +79,12 @@ def compute_all_metrics(results, pair_name):
 
 
 if __name__ == "__main__":
-    pairs = ['BAC_PNC', 'GS_MS']
     all_metrics = []
 
-    for pair in pairs:
-        df = pd.read_csv(f"results_{pair}.csv", index_col=0, parse_dates=True)
-        m  = compute_all_metrics(df, pair.replace('_', '/'))
+    for pair in PAIRS:
+        name = f"{pair[0]}_{pair[1]}"
+        df = pd.read_csv(f"results_{name}.csv", index_col=0, parse_dates=True)
+        m  = compute_all_metrics(df, f"{pair[0]}/{pair[1]}")
         all_metrics.append(m)
 
     summary = pd.DataFrame(all_metrics).set_index('Pair')

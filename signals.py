@@ -3,13 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.regression.linear_model import OLS
 from statsmodels.tools import add_constant
-from config import DEFAULT_ENTRY_Z, DEFAULT_EXIT_Z, ZSCORE_WINDOW
+from config import DEFAULT_ENTRY_Z, DEFAULT_EXIT_Z, PAIRS, ZSCORE_WINDOW
 from data import download_prices
-
-PAIRS = [
-    ('BAC', 'PNC'),
-    ('GS',  'MS'),
-]
 
 WINDOW  = ZSCORE_WINDOW
 ENTRY_Z = DEFAULT_ENTRY_Z
@@ -99,4 +94,4 @@ if __name__ == "__main__":
     prices = download_prices()
 
     for pair in PAIRS:
-        plot_pair(prices, pair)
+        plot_pair(prices, (pair[0], pair[1]))

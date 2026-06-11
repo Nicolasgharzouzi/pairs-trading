@@ -1,22 +1,18 @@
 import pandas as pd
 import numpy as np
+
+from config import (
+    CAPITAL,
+    ENTRY_THRESHOLDS,
+    EXIT_THRESHOLDS,
+    PAIRS,
+    TEST_DAYS,
+    TOTAL_COST,
+    TRAIN_DAYS,
+)
 from data import download_prices
-from signals import compute_spread, compute_zscore, generate_signals
-from metrics import sharpe_ratio, max_drawdown, win_rate
-
-PAIRS = [
-    ('BAC', 'PNC'),
-    ('GS',  'MS'),
-]
-
-CAPITAL    = 10_000
-TOTAL_COST = 0.0015
-
-TRAIN_DAYS = 504   # 2 years
-TEST_DAYS  = 126   # 6 months
-
-ENTRY_THRESHOLDS = [1.0, 1.5, 2.0, 2.5, 3.0]
-EXIT_THRESHOLDS  = [0.0, 0.25, 0.5, 0.75, 1.0]
+from signals import compute_zscore, generate_signals
+from metrics import max_drawdown, sharpe_ratio, win_rate
 
 
 def fit_hedge_ratio(s1, s2):
@@ -150,4 +146,4 @@ if __name__ == "__main__":
     prices = download_prices()
 
     for pair in PAIRS:
-        walk_forward(prices, pair)
+        walk_forward(prices, (pair[0], pair[1]))
