@@ -7,36 +7,17 @@ from config import (
     EXIT_THRESHOLDS,
     PAIRS,
     TEST_DAYS,
-    TOTAL_COST,
     TRAIN_DAYS,
 )
 from data import download_prices
-from signals import compute_zscore, generate_signals
+from engine import fit_hedge_ratio, run_backtest
 from metrics import max_drawdown, sharpe_ratio, win_rate
-
-
-def fit_hedge_ratio(s1, s2):
-    from statsmodels.regression.linear_model import OLS
-    from statsmodels.tools import add_constant
-    model = OLS(s1, add_constant(s2)).fit()
-    return model.params.iloc[1]
 
 
 def run_window(s1, s2, hedge_ratio, entry_z, exit_z):
     """Run backtest on a price window with given parameters."""
-    spread  = s1 - hedge_ratio * s2
-    zscore  = compute_zscore(spread)
-    signal  = generate_signals(zscore, entry_z=entry_z, exit_z=exit_z)
-
-    r1 = s1.pct_change()
-    r2 = s2.pct_change()
-
-    strategy_returns = signal.shift(1) * (r1 - hedge_ratio * r2)
-    trade_entries    = signal.diff().abs() > 0
-    strategy_returns[trade_entries] -= TOTAL_COST
-
-    daily_pnl = strategy_returns.dropna() * CAPITAL
-    return daily_pnl
+    result = run_backtest(s1, s2, entry_z, exit_z, hedge_ratio=hedge_ratio)
+    return result.daily_pnl.dropna()
 
 
 def optimise_on_train(s1_train, s2_train, hedge_ratio):

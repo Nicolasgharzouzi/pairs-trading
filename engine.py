@@ -5,6 +5,7 @@ from statsmodels.regression.linear_model import OLS
 from statsmodels.tools import add_constant
 
 import config
+from regime import compute_regime
 from signals import compute_zscore, generate_signals
 
 
@@ -66,7 +67,8 @@ def run_backtest(
 
     spread = s1 - hedge_ratio * s2
     zscore = compute_zscore(spread, window=zscore_window)
-    signal = generate_signals(zscore, entry_z=entry_z, exit_z=exit_z)
+    regime = compute_regime(spread)
+    signal = generate_signals(zscore, entry_z=entry_z, exit_z=exit_z, regime=regime)
 
     r1 = s1.pct_change()
     r2 = s2.pct_change()

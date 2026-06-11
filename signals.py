@@ -25,7 +25,7 @@ def compute_zscore(spread, window=WINDOW):
     return zscore
 
 
-def generate_signals(zscore, entry_z=ENTRY_Z, exit_z=EXIT_Z):
+def generate_signals(zscore, entry_z=ENTRY_Z, exit_z=EXIT_Z, regime=None):
     signal   = pd.Series(0, index=zscore.index)
     position = 0
 
@@ -34,7 +34,14 @@ def generate_signals(zscore, entry_z=ENTRY_Z, exit_z=EXIT_Z):
         if np.isnan(z):
             continue
 
+        # Don't enter new trades if market is trending
+        in_regime = True
+        if regime is not None:
+            in_regime = regime.iloc[i]
+
         if position == 0:
+            if not in_regime:
+                continue  # skip entry if trending regime
             if z < -entry_z:
                 position = 1
             elif z > entry_z:
