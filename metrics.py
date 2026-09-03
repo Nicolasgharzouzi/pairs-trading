@@ -28,14 +28,14 @@ def max_drawdown(cumulative_pnl):
 
 def calmar_ratio(daily_returns, cumulative_pnl):
     """
-    Annualised return divided by max drawdown.
+    Annualised return divided by max drawdown (as a fraction of capital).
     Return per unit of risk taken.
     """
     annual_return = daily_returns.mean() * TRADING_DAYS
-    mdd           = abs(max_drawdown(cumulative_pnl))
-    if mdd == 0:
+    mdd_frac      = abs(max_drawdown(cumulative_pnl)) / CAPITAL
+    if mdd_frac == 0:
         return 0
-    return annual_return / mdd
+    return annual_return / mdd_frac
 
 
 def win_rate(daily_pnl):

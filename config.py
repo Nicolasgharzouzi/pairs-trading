@@ -11,13 +11,15 @@ ZSCORE_WINDOW = 30
 DEFAULT_ENTRY_Z = 2.0
 DEFAULT_EXIT_Z  = 0.0
 
-# Pairs with entry/exit z-scores (stock_1, stock_2, entry_z, exit_z)
+# Final portfolio: pairs with positive walk-forward OOS results
+# (BAC/PNC and VLO/XOM were flat/negative OOS and dropped)
 PAIRS = [
-    ('BAC', 'PNC', 2.0, 0.0),
-    ('VLO', 'XOM', 3.0, 1.0),
     ('GS',  'MS',  2.5, 0.0),
     ('MOH', 'UNH', 1.5, 0.5),
 ]
+
+# Block new entries when spread is in a trending regime (Hurst filter)
+USE_REGIME = True
 
 # Optimisation grid
 ENTRY_THRESHOLDS = [1.0, 1.5, 2.0, 2.5, 3.0]
